@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Textual Floor Plan</title>
+</head>
+<body>
+    <h1>Upload Textual Floor Plan</h1>
+    <form method="POST" action="/upload_text">
+        <div id="text-inputs">
+            <div class="text-input">
+                <label for="room_name">Room Name:</label>
+                <input type="text" name="room_name[]" required><br>
+                <label for="dimensions">Dimensions (in meters):</label>
+                <input type="text" name="dimensions[]" required><br>
+                <label for="coordinates">Coordinates (in inches and degrees):</label>
+                <input type="text" name="coordinates[]" required><br>
+            </div>
+        </div>
+        <button type="button" onclick="addTextInput()">Add Another Room</button><br>
+        <button type="submit">Upload</button>
+    </form>
+    <a href="/dashboard">Back to Dashboard</a>
+    
+    <script>
+        function addTextInput() {
+            const textInputs = document.getElementById('text-inputs');
+            const newInput = document.createElement('div');
+            newInput.classList.add('text-input');
+            newInput.innerHTML = `
+                <label for="room_name">Room Name:</label>
+                <input type="text" name="room_name[]" required><br>
+                <label for="dimensions">Dimensions (in meters):</label>
+                <input type="text" name="dimensions[]" required><br>
+                <label for="coordinates">Coordinates (in inches and degrees):</label>
+                <input type="text" name="coordinates[]" required><br>
+            `;
+            textInputs.appendChild(newInput);
+        }
+    </script>
+</body>
+</html>
