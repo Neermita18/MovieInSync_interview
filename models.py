@@ -13,11 +13,25 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     
+
 class FloorPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    dimensions = db.Column(db.String(100), nullable=False)
-    coordinates = db.Column(db.String(100), nullable=False)
-    image = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, nullable=False)
+    username = db.Column(db.String(80), nullable=False)
+    name = db.Column(db.String(80), nullable=False)
+    dimensions = db.Column(db.String(80), nullable=False)
+    coordinates = db.Column(db.String(80), nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.UTC)
+    image = db.Column(db.Text, nullable=True)
+
+class MeetingRoom(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=False)
+    capacity = db.Column(db.Integer, nullable=False)
+    booked_by = db.Column(db.String(80), nullable=True)
+
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    meeting_room_name = db.Column(db.String(80), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.UTC)

@@ -25,6 +25,16 @@
         .btn-custom {
             margin-top: 10px;
         }
+        .meeting-room-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        .meeting-room-card button {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -46,7 +56,24 @@
                 </div>
             {% endfor %}
         </div>
-        
+        <h2 class="text-center">Available Meeting Rooms</h2>
+        <div class="row">
+            {% for room in meeting_rooms %}
+                <div class="col-md-4">
+                    <div class="meeting-room-card">
+                        <h4>{{ room.name }}</h4>
+                        <p><strong>Capacity:</strong> {{ room.capacity }}</p>
+                        <p><strong>Status:</strong> {{ 'Filled' if room.capacity == 0 else 'Available' }}</p>
+                        {% if room.capacity > 0 %}
+                            <form action="/book_meeting_room" method="post">
+                                <input type="hidden" name="room_name" value="{{ room.name }}">
+                                <button type="submit" class="btn btn-success">Book Room</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
         <div class="text-center">
             <a href="/upload_text" class="btn btn-primary btn-custom">Upload Textual Floor Plan</a><br>
             <a href="/upload_image" class="btn btn-primary btn-custom">Upload Image Floor Plan</a><br>

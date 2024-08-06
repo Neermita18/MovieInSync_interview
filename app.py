@@ -11,17 +11,17 @@ import os
 import cv2
 import pytesseract
 from datetime import datetime
-from models import db,User, FloorPlan
+from models import db,User, FloorPlan, MeetingRoom, Booking
 from datetime import datetime
 app= Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/91982/Desktop/MovieInSync/instance/database.db'
 db.init_app(app)
 app.secret_key='heudbw2735snd0182bdh376ch3865271'
-socketio = SocketIO(app)
+
 
         	
 with app.app_context():
-    db.create_all()
+    db.drop_all()
 
   
 
@@ -62,14 +62,43 @@ def login():
             return render_template('login.html', error='Invalid credentials')
     return render_template('login.html')
 
-
+def setup_meeting_rooms():
+    predefined_rooms = [
+        {'name': 'M1', 'capacity': 10},
+        {'name': 'M2', 'capacity': 8},
+        {'name': 'M3', 'capacity': 6},
+        {'name': 'M4', 'capacity': 3}
+    ]
+    
+    for room in predefined_rooms:
+        existing_room = MeetingRoom.query.filter_by(name=room['name']).first()
+        if not existing_room:
+            new_room = MeetingRoom(name=room['name'], capacity=room['capacity'])
+            db.session.add(new_room)
+    db.session.commit()
+    
 @app.route('/admin_dashboard', methods=['GET', 'POST'])
 def admin_dashboard():
     if 'user_id' not in session or session.get('email') not in ['neermita@gmail.com']:
         return redirect(url_for('login'))
+    predefined_rooms = [
+        {'name': 'M1', 'capacity': 10},
+        {'name': 'M2', 'capacity': 8},
+        {'name': 'M3', 'capacity': 6},
+        {'name': 'M4', 'capacity': 3}
+    ]
+    
+    for room in predefined_rooms:
+        existing_room = MeetingRoom.query.filter_by(name=room['name']).first()
+        if not existing_room:
+            new_room = MeetingRoom(name=room['name'], capacity=room['capacity'])
+            db.session.add(new_room)
+    db.session.commit()
 
     floorplans = FloorPlan.query.all()
-    return render_template('admin_dashboard.html', floorplans=floorplans)
+    meeting_rooms = MeetingRoom.query.all()
+
+    return render_template('admin_dashboard.html', floorplans=floorplans, meeting_rooms=meeting_rooms)
 
 @app.route('/new')
 def new_dashboard():
@@ -78,8 +107,9 @@ def new_dashboard():
     username = session.get('username')
     email = session.get('email')
     floorplans = FloorPlan.query.filter_by(username=username).all()
-    print(floorplans)
-    return render_template('new.html', floorplans=floorplans, username=username)
+    meeting_rooms = MeetingRoom.query.all()
+    return render_template('new.html', floorplans=floorplans, meeting_rooms=meeting_rooms, username=username)
+
 
 
 def convert_meters_to_inches(meters):
@@ -153,12 +183,34 @@ def upload_text():
             name, dims, coords, timestamp = room
             floorplan = FloorPlan(username=username, name=name, dimensions=dims, coordinates=coords, timestamp=timestamp, image=img_base64)
             db.session.add(floorplan)
-            socketio.emit('new_floorplan', {'username': username, 'name': name, 'dimensions': dims, 'coordinates': coords, 'timestamp': timestamp.isoformat()})
-        return redirect('/new')
         db.session.commit()
         
         return redirect(url_for('new_dashboard'))
     return render_template('upload_text.html')
+
+
+@app.route('/book_meeting_room', methods=['POST'])
+def book_meeting_room():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    room_name = request.form['room_name']
+    user_id = session['user_id']
+    meeting_room = MeetingRoom.query.filter_by(name=room_name).first()
+
+    if meeting_room and meeting_room.capacity > 0:
+        existing_booking = Booking.query.filter_by(user_id=user_id, meeting_room_id=meeting_room.id).first()
+        if not existing_booking:
+            new_booking = Booking(user_id=user_id, meeting_room_id=meeting_room.id)
+            db.session.add(new_booking)
+
+            meeting_room.capacity -= 1
+            db.session.commit()
+    
+    return redirect(url_for('new_dashboard'))
+
+    
+
 
 
 
