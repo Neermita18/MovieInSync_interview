@@ -2,7 +2,10 @@ from flask import Flask, request, jsonify, session, render_template, redirect, u
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-
+import base64
+import pandas as pd
+import matplotlib.pyplot as plt
+import io
 import os
 import cv2
 import pytesseract
@@ -17,16 +20,7 @@ app.secret_key='heudbw2735snd0182bdh376ch3865271'
         	
 with app.app_context():
     db.create_all()
-with app.app_context():
-    metadata = db.metadata
-    
-    # Get the specific table you want to drop from the metadata
-    table_name = 'usersdb'
-    table_to_drop = metadata.tables.get(table_name)
-    
-    # Drop the table if it exists
-    if table_to_drop is not None:
-        table_to_drop.drop(db.engine)
+
   
 
 @app.route('/')
@@ -49,52 +43,107 @@ def register():
 # Login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    session.pop('user', None)
     if request.method == 'POST':
         data = request.form
         user = User.query.filter_by(username=data['name']).first()
         if user and check_password_hash(user.password, data['password']):
             session['user_id'] = user.id
-            return redirect(url_for('upload'))
-        return render_template('login.html', error='Invalid credentials')
-    return render_template('new.html')
+            session['username'] = user.username
+            return redirect(url_for('new_dashboard'))
+        else:
+            return render_template('login.html', error='Invalid credentials')
+    return render_template('login.html')
 
-# Logout route
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return render_template('logout.html')
+
+
+
+@app.route('/new')
+def new_dashboard():
+    
+    username = session.get('username')
+    email = session.get('email')
+    floorplans = FloorPlan.query.filter_by(username=username).all()
+    print(floorplans)
+    return render_template('new.html', floorplans=floorplans, username=username)
+
+
+def convert_meters_to_inches(meters):
+    return meters * 39.37
+
+# Function to convert coordinates from feet and inches to inches
+def convert_coords_to_inches(feet_inch_str):
+    feet, inch = feet_inch_str.split("'")
+    inch = inch.replace('"', '')
+    return (int(feet) * 12) + float(inch)
+
+def generate_plot(data):
+    fig, ax = plt.subplots()
+    for room in data:
+        name, dims, coords = room
+        dims_parts = dims.split(', ')
+        width_meters = float(dims_parts[0])
+        height_meters = float(dims_parts[1])
+        
+        # Convert dimensions to inches
+        width_inches = convert_meters_to_inches(width_meters)
+        height_inches = convert_meters_to_inches(height_meters)
+        
+        coords_parts = coords.split(', ')
+        x_inches = convert_coords_to_inches(coords_parts[0])
+        y_inches = convert_coords_to_inches(coords_parts[1])
+        
+        rect = plt.Rectangle((x_inches, y_inches), width_inches, height_inches, color='blue', alpha=0.5)
+        ax.add_patch(rect)
+        ax.text(x_inches + width_inches / 2, y_inches + height_inches / 2, name, fontsize=12, ha='center')
+    
+    ax.set_xlim(0, 1000)  # Example limits, adjust as needed
+    ax.set_ylim(0, 1000)  # Example limits, adjust as needed
+    ax.set_aspect('equal')
+    plt.xlabel('X (inches)')
+    plt.ylabel('Y (inches)')
+    plt.title('Floor Plan')
+
+    img = io.BytesIO()
+    plt.savefig(img, format='png')
+    img.seek(0)
+    img_base64 = base64.b64encode(img.getvalue()).decode('utf-8')
+    
+    plt.close(fig)
+    
+    return img_base64
 
 @app.route('/upload_text', methods=['GET', 'POST'])
 def upload_text():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
+
     if request.method == 'POST':
-        room_names = request.form.getlist('room_name[]')
+
+        username= session.get('username')
+        user_id = session['user_id']
+        names = request.form.getlist('room_name[]')
         dimensions = request.form.getlist('dimensions[]')
         coordinates = request.form.getlist('coordinates[]')
 
-        combined_data = []
-        for name, dimension, coordinate in zip(room_names, dimensions, coordinates):
-            combined_data.append({
-                "room_name": name,
-                "dimensions": dimension,
-                "coordinates": coordinate
-            })
-
-        data = str(combined_data)  # Convert list of dictionaries to string for storage
-
-        new_plan = FloorPlan(user_id=session['user_id'], data=data, version=1)
-        existing_plan = FloorPlan.query.filter_by(user_id=session['user_id']).order_by(FloorPlan.timestamp.desc()).first()
-
-        # if existing_plan:
-        #     new_plan = resolve_conflict(existing_plan, new_plan)
-
-        db.session.add(new_plan)
+        data = list(zip(names, dimensions, coordinates))
+        
+        # Generate plot image
+        img_base64 = generate_plot(data)
+        
+        # Save the floor plan details in the database
+        for room in data:
+            name, dims, coords = room
+            floorplan = FloorPlan(username= username, name=name, dimensions=dims, coordinates=coords, image=img_base64)
+            db.session.add(floorplan)
         db.session.commit()
-        return redirect(url_for('dash'))
-    
-    return render_template('new.html')
+        
+        return redirect(url_for('new_dashboard'))
+    return render_template('upload_text.html')
+
+
+
 
 # Upload image floor plan
 @app.route('/upload_image', methods=['GET', 'POST'])
@@ -116,13 +165,27 @@ def upload_image():
         new_plan = FloorPlan(user_id=session['user_id'], data=data, version=1)
         existing_plan = FloorPlan.query.filter_by(user_id=session['user_id']).order_by(FloorPlan.timestamp.desc()).first()
 
-     
+        if existing_plan:
+            new_plan = resolve_conflict(existing_plan, new_plan)
 
         db.session.add(new_plan)
         db.session.commit()
-        return redirect(url_for('dash'))
+        return redirect(url_for('new'))
     
-    return render_template('new.html')
+    return render_template('upload_image.html')
+
+# Conflict resolution and version control logic
+def resolve_conflict(existing_plan, new_plan):
+    # Implement your conflict resolution strategy here
+    # For example, using timestamps or user roles to determine the priority
+    # Example: Keep the latest version based on timestamp
+    if new_plan.timestamp > existing_plan.timestamp:
+        new_plan.version = existing_plan.version + 1
+    else:
+        new_plan.version = existing_plan.version
+    
+    # You can add more sophisticated conflict resolution logic here
+    return new_plan
 
 
 

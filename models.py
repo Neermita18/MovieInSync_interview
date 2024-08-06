@@ -11,7 +11,8 @@ class User(db.Model):
 
 class FloorPlan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    data = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime)
-    version = db.Column(db.Integer, nullable=False, default=1)
+    username = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    dimensions = db.Column(db.String(100), nullable=False)
+    coordinates = db.Column(db.String(100), nullable=False)
+    image = db.Column(db.Text, nullable=False)

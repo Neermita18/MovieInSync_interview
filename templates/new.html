@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, {{ username }}!</h1>
+    <h2>Select an Option</h2>
+    <h2>Your Floor Plans</h2>
+    {% for floorplan in floorplans %}
+        <div>
+            <h3>{{ floorplan.name }}</h3>
+            <img src="data:image/png;base64,{{ floorplan.image }}" alt="Floor Plan">
+        </div>
+    {% endfor %}
+    <a href="/upload_text">Upload Textual Floor Plan</a><br>
+    <a href="/upload_image">Upload Image Floor Plan</a><br>
+    <a href="/logout">Logout</a>
+</body>
+</html>
