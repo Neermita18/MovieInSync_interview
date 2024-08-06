@@ -115,7 +115,7 @@ def new_dashboard():
 def convert_meters_to_inches(meters):
     return meters * 39.37
 
-# Function to convert coordinates from feet and inches to inches
+
 def convert_coords_to_inches(feet_inch_str):
     feet, inch = feet_inch_str.split("'")
     inch = inch.replace('"', '')
@@ -128,8 +128,6 @@ def generate_plot(data):
         dims_parts = dims.split(', ')
         width_meters = float(dims_parts[0])
         height_meters = float(dims_parts[1])
-        
-        # Convert dimensions to inches
         width_inches = convert_meters_to_inches(width_meters)
         height_inches = convert_meters_to_inches(height_meters)
         
@@ -141,8 +139,8 @@ def generate_plot(data):
         ax.add_patch(rect)
         ax.text(x_inches + width_inches / 2, y_inches + height_inches / 2, name, fontsize=12, ha='center')
     
-    ax.set_xlim(0, 1000)  # Example limits, adjust as needed
-    ax.set_ylim(0, 1000)  # Example limits, adjust as needed
+    ax.set_xlim(0, 1000) 
+    ax.set_ylim(0, 1000)  
     ax.set_aspect('equal')
     plt.xlabel('X (inches)')
     plt.ylabel('Y (inches)')
@@ -170,15 +168,15 @@ def upload_text():
         coordinates = request.form.getlist('coordinates[]')
         timestamps = request.form.getlist('timestamp[]')
 
-        # Convert timestamp strings to datetime objects
+
         timestamp_objects = [datetime.strptime(ts, '%m/%d/%Y, %I:%M:%S %p') for ts in timestamps]
 
         data = list(zip(names, dimensions, coordinates, timestamp_objects))
         
-        # Generate plot image
+
         img_base64 = generate_plot(data)
         
-        # Save the floor plan details in the database
+
         for room in data:
             name, dims, coords, timestamp = room
             floorplan = FloorPlan(username=username, name=name, dimensions=dims, coordinates=coords, timestamp=timestamp, image=img_base64)
@@ -236,11 +234,8 @@ def book_meeting_room():
     
 #     return render_template('upload_image.html')
 
-# # Conflict resolution and version control logic
 # def resolve_conflict(existing_plan, new_plan):
-#     # Implement your conflict resolution strategy here
-#     # For example, using timestamps or user roles to determine the priority
-#     # Example: Keep the latest version based on timestamp
+
 #     if new_plan.timestamp > existing_plan.timestamp:
 #         new_plan.version = existing_plan.version + 1
 #     else:
