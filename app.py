@@ -5,17 +5,19 @@ from werkzeug.utils import secure_filename
 import base64
 import pandas as pd
 import matplotlib.pyplot as plt
+from flask_socketio import SocketIO, emit
 import io
 import os
 import cv2
 import pytesseract
 from datetime import datetime
 from models import db,User, FloorPlan
+from datetime import datetime
 app= Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/91982/Desktop/MovieInSync/instance/database.db'
 db.init_app(app)
 app.secret_key='heudbw2735snd0182bdh376ch3865271'
-
+socketio = SocketIO(app)
 
         	
 with app.app_context():
@@ -34,7 +36,7 @@ def register():
     if request.method == 'POST':
         data = request.form
         hashed_password = generate_password_hash(data['password'], method='pbkdf2:sha256', salt_length=8)
-        new_user = User(username=data['name'], password=hashed_password)
+        new_user = User(username=data['name'], password=hashed_password, email=data['email'])
         db.session.add(new_user)
         db.session.commit()
         return redirect(url_for('login'))
@@ -45,21 +47,33 @@ def register():
 def login():
     session.pop('user', None)
     if request.method == 'POST':
-        data = request.form
-        user = User.query.filter_by(username=data['name']).first()
-        if user and check_password_hash(user.password, data['password']):
+        email = request.form['email']
+        password = request.form['password']
+        admin_login = request.form.get('admin_login') == 'true'
+        user = User.query.filter_by(email=email).first()
+        if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
             session['username'] = user.username
+            session['email'] = user.email
+            if admin_login and email in ['neermita@gmail.com']:
+                return redirect(url_for('admin_dashboard'))
             return redirect(url_for('new_dashboard'))
         else:
             return render_template('login.html', error='Invalid credentials')
     return render_template('login.html')
 
 
+@app.route('/admin_dashboard', methods=['GET', 'POST'])
+def admin_dashboard():
+    if 'user_id' not in session or session.get('email') not in ['neermita@gmail.com']:
+        return redirect(url_for('login'))
 
+    floorplans = FloorPlan.query.all()
+    return render_template('admin_dashboard.html', floorplans=floorplans)
 
 @app.route('/new')
 def new_dashboard():
+    user_id = session['user_id']
     
     username = session.get('username')
     email = session.get('email')
@@ -80,7 +94,7 @@ def convert_coords_to_inches(feet_inch_str):
 def generate_plot(data):
     fig, ax = plt.subplots()
     for room in data:
-        name, dims, coords = room
+        name, dims, coords, time = room
         dims_parts = dims.split(', ')
         width_meters = float(dims_parts[0])
         height_meters = float(dims_parts[1])
@@ -118,25 +132,29 @@ def upload_text():
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
-
     if request.method == 'POST':
-
-        username= session.get('username')
+        username = session.get('username')
         user_id = session['user_id']
         names = request.form.getlist('room_name[]')
         dimensions = request.form.getlist('dimensions[]')
         coordinates = request.form.getlist('coordinates[]')
+        timestamps = request.form.getlist('timestamp[]')
 
-        data = list(zip(names, dimensions, coordinates))
+        # Convert timestamp strings to datetime objects
+        timestamp_objects = [datetime.strptime(ts, '%m/%d/%Y, %I:%M:%S %p') for ts in timestamps]
+
+        data = list(zip(names, dimensions, coordinates, timestamp_objects))
         
         # Generate plot image
         img_base64 = generate_plot(data)
         
         # Save the floor plan details in the database
         for room in data:
-            name, dims, coords = room
-            floorplan = FloorPlan(username= username, name=name, dimensions=dims, coordinates=coords, image=img_base64)
+            name, dims, coords, timestamp = room
+            floorplan = FloorPlan(username=username, name=name, dimensions=dims, coordinates=coords, timestamp=timestamp, image=img_base64)
             db.session.add(floorplan)
+            socketio.emit('new_floorplan', {'username': username, 'name': name, 'dimensions': dims, 'coordinates': coords, 'timestamp': timestamp.isoformat()})
+        return redirect('/new')
         db.session.commit()
         
         return redirect(url_for('new_dashboard'))
@@ -144,48 +162,47 @@ def upload_text():
 
 
 
-
 # Upload image floor plan
-@app.route('/upload_image', methods=['GET', 'POST'])
-def upload_image():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+# @app.route('/upload_image', methods=['GET', 'POST'])
+# def upload_image():
+#     if 'user_id' not in session:
+#         return redirect(url_for('login'))
 
-    if request.method == 'POST':
-        file = request.files['image']
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+#     if request.method == 'POST':
+#         file = request.files['image']
+#         filename = secure_filename(file.filename)
+#         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         
-        img = cv2.imread(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (3, 3), 0)
-        thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-        data = pytesseract.image_to_string(thresh)
+#         img = cv2.imread(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+#         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+#         blur = cv2.GaussianBlur(gray, (3, 3), 0)
+#         thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+#         data = pytesseract.image_to_string(thresh)
         
-        new_plan = FloorPlan(user_id=session['user_id'], data=data, version=1)
-        existing_plan = FloorPlan.query.filter_by(user_id=session['user_id']).order_by(FloorPlan.timestamp.desc()).first()
+#         new_plan = FloorPlan(user_id=session['user_id'], data=data, version=1)
+#         existing_plan = FloorPlan.query.filter_by(user_id=session['user_id']).order_by(FloorPlan.timestamp.desc()).first()
 
-        if existing_plan:
-            new_plan = resolve_conflict(existing_plan, new_plan)
+#         if existing_plan:
+#             new_plan = resolve_conflict(existing_plan, new_plan)
 
-        db.session.add(new_plan)
-        db.session.commit()
-        return redirect(url_for('new'))
+#         db.session.add(new_plan)
+#         db.session.commit()
+#         return redirect(url_for('new'))
     
-    return render_template('upload_image.html')
+#     return render_template('upload_image.html')
 
-# Conflict resolution and version control logic
-def resolve_conflict(existing_plan, new_plan):
-    # Implement your conflict resolution strategy here
-    # For example, using timestamps or user roles to determine the priority
-    # Example: Keep the latest version based on timestamp
-    if new_plan.timestamp > existing_plan.timestamp:
-        new_plan.version = existing_plan.version + 1
-    else:
-        new_plan.version = existing_plan.version
+# # Conflict resolution and version control logic
+# def resolve_conflict(existing_plan, new_plan):
+#     # Implement your conflict resolution strategy here
+#     # For example, using timestamps or user roles to determine the priority
+#     # Example: Keep the latest version based on timestamp
+#     if new_plan.timestamp > existing_plan.timestamp:
+#         new_plan.version = existing_plan.version + 1
+#     else:
+#         new_plan.version = existing_plan.version
     
-    # You can add more sophisticated conflict resolution logic here
-    return new_plan
+#     # You can add more sophisticated conflict resolution logic here
+#     return new_plan
 
 
 

@@ -3,19 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <title>New Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 50px;
+        }
+        .floorplan-card {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #fff;
+        }
+        .floorplan-card img {
+            border-radius: 5px;
+        }
+        .btn-custom {
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome, {{ username }}!</h1>
-    <h2>Select an Option</h2>
-    <h2>Your Floor Plans</h2>
-    {% for floorplan in floorplans %}
-        <div>
-            <h3>{{ floorplan.name }}</h3>
-            <img src="data:image/png;base64,{{ floorplan.image }}" alt="Floor Plan">
+    <div class="container">
+        <h1 class="text-center">Welcome, {{ username }}!</h1>
+        <h2 class="text-center">Your Floor Plans</h2>
+        
+        <div class="row">
+            {% for floorplan in floorplans %}
+                <div class="col-md-4">
+                    <div class="floorplan-card">
+                        <h4>{{ floorplan.name }}</h4>
+                        <p><strong>Dimensions:</strong> {{ floorplan.dimensions }}</p>
+                        <p><strong>Coordinates:</strong> {{ floorplan.coordinates }}</p>
+                        {% if floorplan.image %}
+                            <img src="data:image/png;base64,{{ floorplan.image }}" alt="Floor Plan" class="img-fluid">
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
         </div>
-    {% endfor %}
-    <a href="/upload_text">Upload Textual Floor Plan</a><br>
-    <a href="/upload_image">Upload Image Floor Plan</a><br>
-    <a href="/logout">Logout</a>
+        
+        <div class="text-center">
+            <a href="/upload_text" class="btn btn-primary btn-custom">Upload Textual Floor Plan</a><br>
+            <a href="/upload_image" class="btn btn-primary btn-custom">Upload Image Floor Plan</a><br>
+            <a href="/logout" class="btn btn-danger btn-custom">Logout</a>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

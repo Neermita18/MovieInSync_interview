@@ -3,25 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <title>Upload Textual Floor Plan</title>
+    <style>
+        .container {
+            background-color: rgba(255, 255, 255, 0.5); /* Adjust the transparency here */
+            border-radius: 10px;
+            padding: 50px;
+            margin-top: 150px; /* Adjust as needed */
+            width: 80%; /* Adjust the width of the container */
+            max-width: 500px;
+        }
+    </style>
 </head>
 <body>
-    <h1>Upload Textual Floor Plan</h1>
-    <form method="POST" action="/upload_text">
-        <div id="text-inputs">
-            <div class="text-input">
-                <label for="room_name">Room Name:</label>
-                <input type="text" name="room_name[]" required><br>
-                <label for="dimensions">Dimensions (in meters):</label>
-                <input type="text" name="dimensions[]" required><br>
-                <label for="coordinates">Coordinates (in inches and degrees):</label>
-                <input type="text" name="coordinates[]" required><br>
+    <div class="container">
+        <h1>Upload Textual Floor Plan</h1>
+        <form method="POST" action="/upload_text">
+            <div id="text-inputs">
+                <div class="text-input">
+                    <label for="room_name">Room Name:</label>
+                    <input type="text" name="room_name[]" required><br>
+                    <label for="dimensions">Dimensions (in meters):</label>
+                    <input type="text" name="dimensions[]" required><br>
+                    <label for="coordinates">Coordinates (in inches and degrees):</label>
+                    <input type="text" name="coordinates[]" required><br>
+                    <label for="timestamp">Timestamp:</label>
+                    <input type="text" name="timestamp[]" readonly required><br>
+                </div>
             </div>
-        </div>
-        <button type="button" onclick="addTextInput()">Add Another Room</button><br>
-        <button type="submit">Upload</button>
-    </form>
-    <a href="/new">Back to Dashboard</a>
-    
+            <button type="button" onclick="addTextInput()">Add Another Room</button><br>
+            <button type="submit">Upload</button>
+        </form>
+        <a href="/new">Back to Dashboard</a>
+    </div>
+
     <script>
         function addTextInput() {
             const textInputs = document.getElementById('text-inputs');
@@ -34,9 +48,23 @@
                 <input type="text" name="dimensions[]" required><br>
                 <label for="coordinates">Coordinates (in inches and degrees):</label>
                 <input type="text" name="coordinates[]" required><br>
+                <label for="timestamp">Timestamp:</label>
+                <input type="text" name="timestamp[]" readonly required><br>
             `;
             textInputs.appendChild(newInput);
+            setTimestamp(newInput.querySelector('input[name="timestamp[]"]'));
         }
+
+        function setTimestamp(input) {
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            input.value = timestamp;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const initialTimestampInput = document.querySelector('input[name="timestamp[]"]');
+            setTimestamp(initialTimestampInput);
+        });
     </script>
 </body>
 </html>

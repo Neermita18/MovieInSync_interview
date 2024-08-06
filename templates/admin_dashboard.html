@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+</head>
+<body>
+    <h1><center>Admin Dashboard</center></h1>
+
+    <h2>All Floor Plans</h2>
+    {% for floorplan in floorplans %}
+        <div>
+            <h3>{{ floorplan.name }}</h3>
+            <p>User: {{ floorplan.username }}</p>
+            <p>Uploaded on: {{ floorplan.timestamp }}</p>
+            <img src="data:image/png;base64,{{ floorplan.image }}" alt="Floor Plan">
+            <form action="/edit_floorplan/{{ floorplan.id }}" method="post">
+                <button type="submit">Edit</button>
+            </form>
+        </div>
+    {% endfor %}
+
+    <a href="/login">Login again</a><br>
+    <a href="/logout">Logout</a>
+</body>
+</html>
