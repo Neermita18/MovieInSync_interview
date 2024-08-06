@@ -11,7 +11,7 @@ import os
 import cv2
 import pytesseract
 from datetime import datetime
-from models import db,User, FloorPlan, MeetingRoom, Booking
+from models import db,User, FloorPlan, MeetingRoom
 from datetime import datetime
 app= Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///C:/Users/91982/Desktop/MovieInSync/instance/database.db'
@@ -21,7 +21,7 @@ app.secret_key='heudbw2735snd0182bdh376ch3865271'
 
         	
 with app.app_context():
-    db.drop_all()
+    db.create_all()
 
   
 
@@ -195,18 +195,11 @@ def book_meeting_room():
         return redirect(url_for('login'))
 
     room_name = request.form['room_name']
-    user_id = session['user_id']
     meeting_room = MeetingRoom.query.filter_by(name=room_name).first()
-
     if meeting_room and meeting_room.capacity > 0:
-        existing_booking = Booking.query.filter_by(user_id=user_id, meeting_room_id=meeting_room.id).first()
-        if not existing_booking:
-            new_booking = Booking(user_id=user_id, meeting_room_id=meeting_room.id)
-            db.session.add(new_booking)
-
-            meeting_room.capacity -= 1
-            db.session.commit()
-    
+        meeting_room.booked_by = session['username']
+        meeting_room.capacity -= 1
+        db.session.commit()
     return redirect(url_for('new_dashboard'))
 
     

@@ -30,8 +30,4 @@ class MeetingRoom(db.Model):
     booked_by = db.Column(db.String(80), nullable=True)
 
 
-class Booking(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    meeting_room_name = db.Column(db.String(80), nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.UTC)
+
